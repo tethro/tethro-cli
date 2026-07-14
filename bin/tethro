@@ -1,17 +1,17 @@
 #!/usr/bin/env node
 /**
- * Airlock CLI — the real binary.
+ * Tethro CLI — the real binary.
  *
  * Usage:
- *   airlock daemon start                              Start the local daemon
- *   airlock daemon status                             Check daemon status
- *   airlock run <agent> <prompt>                      Run an agent in a sandbox
- *   airlock run claude-code "refactor the webhook"    Specific example
- *   airlock scan [path]                               Scan workspace for secrets + licenses
- *   airlock kill [session-id]                         Kill switch (all or specific session)
- *   airlock sessions                                  List active sessions
- *   airlock config show                               Show current configuration
- *   airlock doctor                                    Verify installation
+ *   tethro daemon start                              Start the local daemon
+ *   tethro daemon status                             Check daemon status
+ *   tethro run <agent> <prompt>                      Run an agent in a sandbox
+ *   tethro run claude-code "refactor the webhook"    Specific example
+ *   tethro scan [path]                               Scan workspace for secrets + licenses
+ *   tethro kill [session-id]                         Kill switch (all or specific session)
+ *   tethro sessions                                  List active sessions
+ *   tethro config show                               Show current configuration
+ *   tethro doctor                                    Verify installation
  */
 
 const { spawn, spawnSync, execSync } = require("child_process");
@@ -20,9 +20,9 @@ const path = require("path");
 const os = require("os");
 const http = require("http");
 
-const CONSOLE_URL = process.env.AIRLOCK_URL || "http://localhost:3000";
-const API_TOKEN = process.env.AIRLOCK_TOKEN || "";
-const DEFAULT_ISOLATION = process.env.AIRLOCK_ISOLATION || "subprocess";
+const CONSOLE_URL = process.env.TETHRO_URL || "http://localhost:3000";
+const API_TOKEN = process.env.TETHRO_TOKEN || "";
+const DEFAULT_ISOLATION = process.env.TETHRO_ISOLATION || "subprocess";
 
 // ─── Helpers ───
 
@@ -91,7 +91,7 @@ function emitWsEvent(event) {
 // ─── Sandbox ───
 
 function createSandboxWorkspace(projectPath) {
-  const sandboxDir = path.join(os.tmpdir(), "airlock-sandboxes", `sb-${Date.now()}`);
+  const sandboxDir = path.join(os.tmpdir(), "tethro-sandboxes", `sb-${Date.now()}`);
   fs.mkdirSync(sandboxDir, { recursive: true });
 
   // Copy the project to the sandbox (in a real impl, this would be a reflink/clonefile)
@@ -133,7 +133,7 @@ async function runInSandbox(sandboxDir, agent, prompt, isolation, sessionId) {
 async function runInSubprocess(sandboxDir, agent, prompt, sessionId) {
   // Subprocess isolation: restricted environment, no real API keys
   // Request a per-session scoped key from the credential proxy
-  let sessionKey = "airlock-session-proxy";
+  let sessionKey = "tethro-session-proxy";
   try {
     const provider = agent === "codex-cli" ? "openai" : "anthropic";
     const res = await new Promise((resolve, reject) => {
@@ -171,8 +171,8 @@ async function runInSubprocess(sandboxDir, agent, prompt, sessionId) {
     ANTHROPIC_BASE_URL: "http://127.0.0.1:8787/anthropic",
     OPENAI_BASE_URL: "http://127.0.0.1:8787/openai",
     // Sandbox marker
-    AIRLOCK_SANDBOX: "1",
-    AIRLOCK_WORKSPACE: sandboxDir,
+    TETHRO_SANDBOX: "1",
+    TETHRO_WORKSPACE: sandboxDir,
   };
 
   let command, args;
@@ -204,11 +204,11 @@ async function runInSubprocess(sandboxDir, agent, prompt, sessionId) {
 
 function runInDocker(sandboxDir, agent, prompt) {
   // Docker isolation: run the agent inside a container
-  const imageName = "airlock/agent-sandbox:latest";
+  const imageName = "tethro/agent-sandbox:latest";
   const env = [
-    "-e", "ANTHROPIC_API_KEY=airlock-session-proxy",
+    "-e", "ANTHROPIC_API_KEY=tethro-session-proxy",
     "-e", "ANTHROPIC_BASE_URL=http://host.docker.internal:8787/anthropic",
-    "-e", "AIRLOCK_SANDBOX=1",
+    "-e", "TETHRO_SANDBOX=1",
   ];
 
   let cmd;
@@ -332,7 +332,7 @@ async function cmdRun(agent, prompt, opts = {}) {
     }).catch(() => {});
 
     // Cleanup sandbox (in production, this would be GC'd after retention period)
-    if (process.env.AIRLOCK_KEEP_SANDBOX !== "1") {
+    if (process.env.TETHRO_KEEP_SANDBOX !== "1") {
       try {
         fs.rmSync(sandboxDir, { recursive: true, force: true });
         log(`Sandbox cleaned up`, "ok");
@@ -483,7 +483,7 @@ async function cmdSessions() {
 
 async function cmdDaemon(action) {
   if (action === "start") {
-    log("Starting Airlock daemon...", "info");
+    log("Starting Tethro daemon...", "info");
     log("Daemon manages: sandbox creation, credential proxy, filesystem clones, syscall monitoring", "info");
     log("In production, this would start the Firecracker/gVisor supervisor + credential proxy on :8787", "info");
     log("Daemon running (PID: " + process.pid + ")", "ok");
@@ -503,10 +503,10 @@ async function cmdDaemon(action) {
       log(`Active sessions: ${(res.data || []).length}`, "ok");
     } catch {
       log(`Console not reachable at ${CONSOLE_URL}`, "warn");
-      log("Run 'airlock daemon start' or start the web console", "info");
+      log("Run 'tethro daemon start' or start the web console", "info");
     }
   } else {
-    log("Usage: airlock daemon <start|status>", "info");
+    log("Usage: tethro daemon <start|status>", "info");
   }
 }
 
@@ -548,17 +548,17 @@ async function cmdDoctor() {
 
 function cmdConfig(action) {
   if (action === "show") {
-    console.log("Airlock configuration:");
+    console.log("Tethro configuration:");
     console.log(`  console_url:  ${CONSOLE_URL}`);
     console.log(`  api_token:    ${API_TOKEN ? "***" : "(not set)"}`);
     console.log(`  isolation:    ${DEFAULT_ISOLATION}`);
     console.log("");
     console.log("Set via environment variables:");
-    console.log("  AIRLOCK_URL       Console URL (default: http://localhost:3000)");
-    console.log("  AIRLOCK_TOKEN     API token for authentication");
-    console.log("  AIRLOCK_ISOLATION Default isolation (subprocess/docker/gvisor/firecracker)");
+    console.log("  TETHRO_URL       Console URL (default: http://localhost:3000)");
+    console.log("  TETHRO_TOKEN     API token for authentication");
+    console.log("  TETHRO_ISOLATION Default isolation (subprocess/docker/gvisor/firecracker)");
   } else {
-    log("Usage: airlock config <show>", "info");
+    log("Usage: tethro config <show>", "info");
   }
 }
 
@@ -570,10 +570,10 @@ function main() {
 
   if (!cmd || cmd === "help" || cmd === "--help") {
     console.log(`
-Airlock CLI v0.9.4 — sandbox AI coding agents
+Tethro CLI v0.9.4 — sandbox AI coding agents
 
 USAGE
-  airlock <command> [options]
+  tethro <command> [options]
 
 COMMANDS
   daemon start              Start the local daemon (credential proxy + sandbox supervisor)
@@ -591,16 +591,16 @@ OPTIONS
   --keep-sandbox            Don't clean up sandbox after agent exits
 
 ENVIRONMENT
-  AIRLOCK_URL               Console URL (default: http://localhost:3000)
-  AIRLOCK_TOKEN             API token for authentication
-  AIRLOCK_ISOLATION         Default isolation level
+  TETHRO_URL               Console URL (default: http://localhost:3000)
+  TETHRO_TOKEN             API token for authentication
+  TETHRO_ISOLATION         Default isolation level
 
 EXAMPLES
-  airlock run claude-code "add idempotency to the refund webhook"
-  airlock run claude-code "fix the auth bug" --isolation docker
-  airlock scan ./src
-  airlock kill sn-7f3a9c1e
-  airlock doctor
+  tethro run claude-code "add idempotency to the refund webhook"
+  tethro run claude-code "fix the auth bug" --isolation docker
+  tethro scan ./src
+  tethro kill sn-7f3a9c1e
+  tethro doctor
 `);
     return;
   }
@@ -613,14 +613,14 @@ EXAMPLES
       const agent = args[1];
       const prompt = args[2];
       if (!agent || !prompt) {
-        log("Usage: airlock run <agent> <prompt>", "error");
-        log('Example: airlock run claude-code "refactor the webhook"', "info");
+        log("Usage: tethro run <agent> <prompt>", "error");
+        log('Example: tethro run claude-code "refactor the webhook"', "info");
         process.exit(1);
       }
       const opts = {};
       const isolationIdx = args.indexOf("--isolation");
       if (isolationIdx > -1) opts.isolation = args[isolationIdx + 1];
-      if (args.includes("--keep-sandbox")) process.env.AIRLOCK_KEEP_SANDBOX = "1";
+      if (args.includes("--keep-sandbox")) process.env.TETHRO_KEEP_SANDBOX = "1";
       cmdRun(agent, prompt, opts);
       break;
     }
@@ -641,7 +641,7 @@ EXAMPLES
       break;
     default:
       log(`Unknown command: ${cmd}`, "error");
-      log("Run 'airlock help' for usage", "info");
+      log("Run 'tethro help' for usage", "info");
       process.exit(1);
   }
 }
