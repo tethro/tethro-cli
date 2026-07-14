@@ -1,6 +1,6 @@
 ﻿# tethro-cli
 
-CLI for sandboxing AI coding agents. Run Claude Code, Codex CLI, and Cursor in isolated microVMs with credential proxying, egress filtering, and audit logging.
+CLI for sandboxing AI coding agents. Run Claude Code, Codex CLI, and Aider in isolated workspaces with credential proxying, optional container isolation, and audit logging.
 
 ```bash
 npm i -g tethro-cli
