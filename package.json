@@ -1,12 +1,15 @@
-﻿{
+{
   "name": "tethro-cli",
   "version": "0.9.4",
-  "description": "CLI for sandboxing AI coding agents. Run Claude Code, Codex CLI, and Cursor in isolated microVMs with credential proxying, egress filtering, and audit logging.",
-  "bin": { "tethro": "./bin/tethro" },
+  "description": "Tethro CLI — sandbox AI coding agents with microVM isolation, credential proxying, and audit logging",
+  "bin": {
+    "tethro": "./bin/tethro"
+  },
   "scripts": {
-    "dev": "bun src/index.js",
+    "build": "bun build src/index.ts --outfile bin/tethro --target node",
+    "dev": "bun src/index.ts",
     "install-global": "npm link"
   },
-  "repository": { "type": "git", "url": "https://github.com/tethro/tethro-cli" },
+  "dependencies": {},
   "license": "Apache-2.0"
 }
